@@ -1,0 +1,30 @@
+[mysql]
+# 你的统一身份认证用户名（学号）
+username = 202xxxxxx
+# 你的统一身份认证密码
+password = your_password
+# 选课类型: 0 代表“必选计划”，1 代表“跨年级选课”，其他数字代表其他类型
+cno = 0
+
+# 课程ID和教学班ID，必须一一对应，用逗号隔开
+# 示例:
+# kcid = 课程A的ID,课程B的ID
+# jx0404id = 课程A的教学班ID,课程B的教学班ID
+kcid = S20210001,S20210002
+jx0404id = 202120221S20210001001,202120221S20210002002
+
+
+[advanced]
+# (高级) 选课批次ID，一般不需要修改。
+# 可在教务系统选课页面URL中找到 jx0502zbid=...
+# 抽选: jx0502zbid = ACB71E3B9A2342BFB974665635465D21
+# 抢选: jx0502zbid = 7197BFFFF1F34C358D7D74A38022E747
+# 补选: jx0502zbid = 248522AF977240AD868F3566F15CDED9
+jx0502zbid = ACB71E3B9A2342BFB974665635465D21
+
+# (高级) 并发线程数，建议范围 4-16，根据网络情况调整
+max_workers = 8
+
+# (高级) 每轮抢课失败后的随机等待时间范围（秒）
+round_cool_down_min = 30
+round_cool_down_max = 90
