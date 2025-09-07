@@ -69,7 +69,14 @@ class Auth:
                                              'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/97.0.4692.99 Safari/537.36'
         self.session.headers['Host'] = 'auth.sztu.edu.cn'
         self.session.headers['Referer'] = 'https://auth.sztu.edu.cn/idp/authcenter/ActionAuthChain?entityId=jiaowu'
-        # ... (其余headers保持不变)
+        self.session.headers['Origin'] = 'https://auth.sztu.edu.cn'
+        self.session.headers['X-Requested-With'] = 'XMLHttpRequest'
+        self.session.headers['Sec-Fetch-Site'] = 'same-origin'
+        self.session.headers['Sec-Fetch-Mode'] = 'cors'
+        self.session.headers['Sec-Fetch-Dest'] = 'empty'
+        self.session.headers['sec-ch-ua-mobile'] = '?0'
+        self.session.headers['sec-ch-ua-platform'] = '"macOS"'
+        self.session.headers['sec-ch-ua'] = '" Not A;Brand";v="99", "Chromium";v="98", "Google Chrome";v="98"'
         self.session.headers['Content-Type'] = 'application/x-www-form-urlencoded; charset=UTF-8'
         if cookies:
             self.session.cookies = requests.utils.cookiejar_from_dict(cookies)
