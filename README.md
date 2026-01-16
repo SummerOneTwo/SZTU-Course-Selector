@@ -138,21 +138,36 @@ python crawler.py
 - 公共任选课
 并将结果保存到 `选课数据.json`。
 
-### 2. 运行选课脚本
+### 2. 运行选课脚本 (新)
+
+**方式一：一键启动 (推荐)**
+直接双击运行 `run.bat`，它会自动使用配置好的Python环境运行选课程序。
+
+**方式二：手动运行**
 配置完成后，在项目目录中运行主程序：
 
 ```bash
 python sztu_course_selector.py
 ```
 
+### 3. 自动监控抢选 (新)
+
+使用 `monitor.bat` (或 `monitor.py`) 可以实时监控选课系统。
+- **功能**：在选课系统开放瞬间（如13:00），通过代码检测自动发现新的"抢选"批次ID。
+- **自动操作**：一旦发现新ID，自动更新 `config.txt` 并立即启动抢课脚本。
+- **使用建议**：在抢选开始前5分钟双击 `monitor.bat` 挂机等待。
+
 ## 📁 项目结构
 
 ```
 SZTU-Course-Selector/
-├── sztu_course_selector.py    # 改动后的选课主程序
-├── crawler.py                 # (新增) 课程数据获取爬虫
+├── sztu_course_selector.py    # [核心] 选课主程序
+├── crawler.py                 # [工具] 课程数据爬虫
+├── monitor.py                 # [工具] 抢选监控自动脚本
+├── run.bat                    # [脚本] 一键启动选课
+├── monitor.bat                # [脚本] 一键启动监控
 ├── config.txt.example         # 配置文件模板
-├── config.txt                 # 实际配置文件（需要自己创建）
+├── config.txt                 # 实际配置文件
 ├── requirements.txt           # Python依赖包
 ├── 选课数据.json              # 课程数据库文件
 └── README.md                  # 项目说明文档
@@ -218,8 +233,8 @@ SZTU-Course-Selector/
 
 ---
 
-**最后更新**：2025年9月11日  
-**版本**：v1.0  
+**最后更新**：2026年1月16日  
+**版本**：v2.0  
 **作者**：SummerOneTwo
 
 > 💡 **温馨提示**：使用前请仔细阅读学校选课相关规定，理性选课，诚信选课！

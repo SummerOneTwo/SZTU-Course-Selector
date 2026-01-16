@@ -12,6 +12,9 @@ from Crypto.Cipher import DES
 import urllib3
 from concurrent.futures import ThreadPoolExecutor
 
+# 强制 stdout 使用 utf-8 编码，防止 Windows 下打印 Emoji 报错
+sys.stdout.reconfigure(encoding='utf-8')
+
 # 禁用InsecureRequestWarning警告
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -23,27 +26,36 @@ try:
     # [mysql] section
     user = conf.get('mysql', 'username')
     pwd = conf.get('mysql', 'password')
-    cno = conf.get('mysql', 'cno')
+    cno_str = conf.get('mysql', 'cno')
     kcid_str = conf.get('mysql', 'kcid')
     jx0404id_str = conf.get('mysql', 'jx0404id')
 
-    # [advanced] section - 新增的可选高级配置
-    # 提供默认值，使得旧的配置文件也能兼容
+    # [advanced] section
     jx0502zbid = conf.get('advanced', 'jx0502zbid', fallback='248522AF977240AD868F3566F15CDED9')
     max_workers = conf.getint('advanced', 'max_workers', fallback=8)
     round_cool_down_min = conf.getint('advanced', 'round_cool_down_min', fallback=30)
     round_cool_down_max = conf.getint('advanced', 'round_cool_down_max', fallback=90)
 
-    # 将字符串转换为列表，并去除每个ID周围可能存在的空格
+    # Process Lists
     kc_list = [kc.strip() for kc in kcid_str.split(',') if kc.strip()]
     jx_list = [jx.strip() for jx in jx0404id_str.split(',') if jx.strip()]
+    
+    # Process CNO (Support single value or list)
+    if ',' in cno_str:
+        cno_list = [c.strip() for c in cno_str.split(',') if c.strip()]
+    else:
+        # If single value, apply to all courses
+        cno_list = [cno_str.strip()] * len(kc_list)
 
-    # 新增：校验课程ID和教学班ID数量是否匹配
-    if len(kc_list) != len(jx_list):
-        print("❌ 配置错误: kcid 和 jx0404id 的数量不匹配！请检查 config.txt。")
-        print(f"  - kcid 数量: {len(kc_list)}")
-        print(f"  - jx0404id 数量: {len(jx_list)}")
+    # Validation
+    if not (len(kc_list) == len(jx_list) == len(cno_list)):
+        print("❌ 配置错误: kcid, jx0404id, cno 的数量不匹配！")
+        print(f"  - kcid: {len(kc_list)}")
+        print(f"  - jx0404id: {len(jx_list)}")
+        print(f"  - cno: {len(cno_list)}")
+        print("如果是混合选课，请确保 cno 也用逗号分隔，并与课程一一对应。")
         input("按回车键退出...")
+        sys.exit(1)        input("按回车键退出...")
         sys.exit(1)
 
 except Exception as e:
@@ -174,10 +186,10 @@ def select_course_worker(auth_session, kc, jx, cno):
             return True, None # 返回成功状态和空值
         else:
             print(f"⏳ [课程: {kc}] 抢课失败 | 状态: {message.strip()}")
-            return False, (kc, jx) # 返回失败状态和课程信息
+            return False, (kc, jx, cno) # 返回失败状态和课程信息
     except Exception as e:
         print(f"💥 [课程: {kc}] 发生错误: {e}")
-        return False, (kc, jx) # 发生错误也视为失败
+        return False, (kc, jx, cno) # 发生错误也视为失败
 
 if __name__ == "__main__":
     try:
@@ -188,10 +200,11 @@ if __name__ == "__main__":
             input("按回车键退出...")
             sys.exit(1)
         print("✅ 登录成功！")
-        auth_session.logintoXK(cno)
+        auth_session.logintoXK(cno_list[0]) # Login with the first cno type (usually sufficient)
         start_time = time.time()
         
-        remaining_courses = list(zip(kc_list, jx_list))
+        # Zip all parameters including cno
+        remaining_courses = list(zip(kc_list, jx_list, cno_list))
         success_count = 0
         round_num = 0
 
@@ -207,7 +220,10 @@ if __name__ == "__main__":
             # 优化：使用线程池来控制并发
             with ThreadPoolExecutor(max_workers=max_workers) as executor:
                 # 提交本轮所有任务到线程池
-                future_to_course = {executor.submit(select_course_worker, auth_session, kc, jx, cno): (kc, jx) for kc, jx in remaining_courses}
+                future_to_course = {
+                    executor.submit(select_course_worker, auth_session, kc, jx, cno): (kc, jx, cno) 
+                    for kc, jx, cno in remaining_courses
+                }
                 
                 # 获取每个任务的结果
                 for future in future_to_course:
