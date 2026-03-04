@@ -1,21 +1,22 @@
 # 配置文件，包含敏感信息
+config.toml
+
+# 运行日志与旧配置
+*.log
 config.txt
+*.txt.example
+test_out.txt
+test_err.txt
 
 # Python 缓存
 __pycache__/
-*.pyc
-*.pyo
-*.pyd
+*.py[cod]
 
-# 虚拟环境
-venv/
+# 虚拟环境 (通过 uv 管理)
 .venv/
-env/
-ENV/
 
 # IDE/编辑器配置
 .idea/
 .vscode/
 *.swp
 *~ 
-config.txt

@@ -2,7 +2,8 @@ import json
 import sys
 import os
 import requests
-from configparser import ConfigParser
+import time
+import tomllib
 
 # Add current directory to sys.path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -13,37 +14,52 @@ except ImportError:
     print("Error: Could not import Auth from sztu_course_selector.")
     sys.exit(1)
 
-JX0502ZBID = "07D603B744494337B533D3183C386091"
+# 从 config.toml 读取批次 ID
+try:
+    with open('config.toml', 'rb') as f:
+        config_toml = tomllib.load(f)
+    JX0502ZBID = config_toml.get('settings', {}).get('jx0502zbid', '')
+except FileNotFoundError:
+    print("❌ 找不到配置文件 config.toml")
+    sys.exit(1)
+except Exception as e:
+    print(f"❌ 读取 config.toml 失败: {e}")
+    sys.exit(1)
+
+if not JX0502ZBID or '请' in JX0502ZBID or 'XXXX' in JX0502ZBID:
+    print("❌ 请先在 config.toml 中 [settings] 节点下填写有效的 jx0502zbid（批次 ID）")
+    sys.exit(1)
 
 def fetch_courses_from_url(auth, url, data_list, label):
     print(f"📥 Fetching {label}...")
-    try:
-        resp = auth.post(url, data=data_list)
-        # Check if response is valid JSON
-        if "My JSP" in resp.text:
-             print(f"   ⚠️ Server returned JSP placeholder for {label}.")
-             return []
-        
+    for attempt in range(1, 4):
         try:
-            res_json = resp.json()
-        except:
-             # Try to see if it's HTML error
-             if "错误" in resp.text:
-                 print(f"   ❌ Server returned Error Page for {label}.")
-             else:
-                 print(f"   ❌ Response is not JSON from {label}.")
-             return []
+            resp = auth.post(url, data=data_list)
+            if "My JSP" in resp.text:
+                print(f"   ⚠️ Server returned JSP placeholder for {label}.")
+                return []
+            
+            try:
+                res_json = resp.json()
+            except:
+                if "错误" in resp.text:
+                    print(f"   ❌ Server returned Error Page for {label} (Attempt {attempt}/3).")
+                else:
+                    print(f"   ❌ Response is not JSON from {label} (Attempt {attempt}/3).")
+                if attempt < 3: time.sleep(5)
+                continue
 
-        if 'aaData' in res_json:
-            count = len(res_json['aaData'])
-            print(f"   ✅ {label}: Found {count} courses.")
-            return res_json['aaData']
-        else:
-            print(f"   ⚠️ No 'aaData' in response from {label}.")
-            return []
-    except Exception as e:
-        print(f"   ❌ Error fetching/parsing {label}: {e}")
-        return []
+            if 'aaData' in res_json:
+                count = len(res_json['aaData'])
+                print(f"   ✅ {label}: Found {count} courses.")
+                return res_json['aaData']
+            else:
+                print(f"   ⚠️ No 'aaData' in response from {label}.")
+                return []
+        except Exception as e:
+            print(f"   ❌ Error fetching {label} (Attempt {attempt}/3): {e}")
+            if attempt < 3: time.sleep(5)
+    return []
 
 def fetch_and_save_courses():
     print(f"🚀 Starting crawler with batch ID: {JX0502ZBID}")
@@ -91,6 +107,11 @@ def fetch_and_save_courses():
     url_gg = "https://jwxt.sztu.edu.cn/jsxsd/xsxkkc/xsxkGgxxkxk?kcxx=&skls=&skxq=&skjc=&sfym=false&sfct=true&sfxx=true&skfs="
     courses_gg = fetch_courses_from_url(auth, url_gg, base_data, "Public Electives")
     all_courses.extend(courses_gg)
+
+    # 5. Experiment Selection (Syxk)
+    url_sy = "https://jwxt.sztu.edu.cn/jsxsd/xsxkkc/xsxkSyxk?kcxx=&skls=&skxq=&skjc=&sfym=false&sfct=true&sfxx=true&skfs="
+    courses_sy = fetch_courses_from_url(auth, url_sy, base_data, "Experiment Selection")
+    all_courses.extend(courses_sy)
 
     print(f"📊 Total unique courses found: {len(all_courses)}")
     
