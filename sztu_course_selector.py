@@ -334,6 +334,16 @@ def run_course_selection(auth_session):
         if session_expired:
             raise SessionExpiredError("会话已失效")
             
+        sleep_sec = is_in_time_window(schedule_start, schedule_end)
+        if sleep_sec > 0:
+            h, r = divmod(sleep_sec, 3600)
+            m, s = divmod(r, 60)
+            print(f"\n🌙 当前时间不在运行时间窗口 ({schedule_start}-{schedule_end})，休眠中...")
+            print(f"   距离下次抢课唤醒约有: {int(h)}小时 {int(m)}分钟 {int(s)}秒")
+            time.sleep(sleep_sec)
+            print("\n☀️ 唤醒时间到，重新激活会话抢课！")
+            raise SessionExpiredError("休眠唤醒，需要重新登录以防会话失效")
+            
         round_num += 1
         print("\n" + "=" * 50)
         print(f"🔥 第 {round_num} 轮抢课开始！正在抢 {len(active_groups)} 门课程。")
