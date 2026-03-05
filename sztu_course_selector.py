@@ -207,9 +207,10 @@ class Auth:
             url = f"https://jwxt.sztu.edu.cn/jsxsd/xsxkkc/knjxkOper?kcid={kcid}&cfbs=null&jx0404id={jxid}&xkzy=&trjf="
         return self.get(url)
 
-def select_course_worker(auth_session, kc, jx, cno):
+def select_course_worker(auth_session, kc, jx, cno, name="未命名课程"):
     """单课程选课工作函数，首发模式最多重试3次，捡漏模式1次。"""
     global session_expired
+    tag = name  # 日志标签使用课程名
     max_attempts = 3 if run_mode == 'monitor' else 1
 
     for attempt in range(max_attempts):
@@ -224,7 +225,7 @@ def select_course_worker(auth_session, kc, jx, cno):
 
             if "登录" in res.text or "idp" in res.url or res.status_code == 302:
                 session_expired = True
-                print(f"⚠️ [{kc[:8]}] 会话过期！")
+                print(f"⚠️ [{tag}] 会话过期！")
                 return False, (kc, jx, cno)
 
             try:
@@ -233,21 +234,21 @@ def select_course_worker(auth_session, kc, jx, cno):
                 message = "系统繁忙" if "频繁" in res.text else f"非JSON: {res.text[:50]}"
 
             if "选课成功" in message:
-                print(f"✅ [{kc[:8]}] 抢课成功！")
+                print(f"✅ [{tag}] 抢课成功！")
                 return True, None
             else:
-                print(f"⏳ [{kc[:8]}] {message.strip()}")
+                print(f"⏳ [{tag}] {message.strip()}")
                 return False, (kc, jx, cno)
 
         except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
             if run_mode == 'monitor':
-                print(f"⚡ [{kc[:8]}] 超时重试 ({attempt+1}/{max_attempts})")
+                print(f"⚡ [{tag}] 超时重试 ({attempt+1}/{max_attempts})")
                 continue
             else:
-                print(f"💥 [{kc[:8]}] 网络异常: {e}")
+                print(f"💥 [{tag}] 网络异常: {e}")
                 return False, (kc, jx, cno)
         except Exception as e:
-            print(f"💥 [{kc[:8]}] 异常: {e}")
+            print(f"💥 [{tag}] 异常: {e}")
             return False, (kc, jx, cno)
 
     return False, (kc, jx, cno)
@@ -354,15 +355,16 @@ def run_course_selection(auth_session):
         for idx, group in active_groups.items():
             kc = group['kcid']
             cno = group['cno']
+            name = group.get('name', '未命名课程')
             for jx in group['jx_list']:
-                tasks.append((idx, kc, jx, cno))
+                tasks.append((idx, kc, jx, cno, name))
 
         round_success_idx = set()
 
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             future_to_task = {
-                executor.submit(select_course_worker, auth_session, kc, jx, cno): idx
-                for (idx, kc, jx, cno) in tasks
+                executor.submit(select_course_worker, auth_session, kc, jx, cno, name): idx
+                for (idx, kc, jx, cno, name) in tasks
             }
             for future in future_to_task:
                 idx = future_to_task[future]
