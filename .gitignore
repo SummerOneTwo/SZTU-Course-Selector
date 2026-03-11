@@ -6,6 +6,7 @@ config.toml
 *.log
 *.txt
 !README.md
+.json
 
 # Python 缓存
 __pycache__/
@@ -38,6 +39,3 @@ Thumbs.db
 
 # Claude
 .claude/
-
-# uv
-uv.lock
