@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(uv run:*)",
+      "Bash(uv add:*)",
+      "Bash(ls -la *.py 2>/dev/null | head -20)"
+    ]
+  }
+}

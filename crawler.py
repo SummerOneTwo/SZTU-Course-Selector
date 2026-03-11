@@ -37,7 +37,7 @@ def get_batch_id():
     return bid
 
 
-def fetch_courses(auth, url, data, label):
+def fetch_courses(auth, url, data, label, debug=False):
     print(f"\n📥 {label}")
 
     for attempt in range(1, 4):
@@ -52,6 +52,10 @@ def fetch_courses(auth, url, data, label):
                 res_json = resp.json()
             except json.JSONDecodeError:
                 print(f"   ❌ 非JSON响应 (attempt {attempt})")
+                if debug and attempt == 1:
+                    print(f"   🔍 响应内容: {resp.text[:500]}")
+                    print(f"   🔍 URL: {url}")
+                    print(f"   🔍 Data: {data}")
                 if attempt < 3:
                     time.sleep(2)
                 continue
@@ -83,12 +87,13 @@ def fetch_courses(auth, url, data, label):
     return []
 
 
-def build_url(endpoint):
+def build_url(endpoint, batch_id, kcxx=""):
     base = "https://jwxt.sztu.edu.cn/jsxsd/xsxkkc"
 
     # 关键参数: sfym=false 显示已满, sfct=false 显示冲突, sfxx=false 显示限选
     params = {
-        "kcxx": "",
+        "jx0502zbid": batch_id,
+        "kcxx": kcxx,
         "skls": "",
         "skxq": "",
         "skjc": "",
@@ -140,15 +145,13 @@ def main():
     for i in range(1, 15):
         base_data[f"mDataProp_{i}"] = "test"
 
-    # 7种选课类型
+    # 5种选课类型 (endpoint, label, need_batch_in_data, needs_loop)
     course_types = [
-        ("xsxkBxqjhxk", "本学期计划选课"),
-        ("xsxkKnjxk", "跨年级选课"),
-        ("xsxkGgxxkxk", "公选课选课"),
-        ("xsxkSyxk", "实验选课"),
-        ("xsxkZynknjxk", "专业内跨年级选课"),
-        ("xsxkKzyxkkc", "跨专业选课"),
-        ("xsxkFawxk", "跨专业选课(FA)"),
+        ("xsxkBxqjhxk", "本学期计划选课", False, False),
+        ("xsxkKnjxk", "专业内跨年级选课", False, True),
+        ("xsxkGgxxkxk", "公选课选课", False, False),
+        ("xsxkSyxk", "实验选课", False, False),
+        ("xsxkFawxk", "跨专业选课", False, True),
     ]
 
     all_courses = []
@@ -157,13 +160,49 @@ def main():
     print("📚 开始抓取各类型课程数据")
     print("=" * 60)
 
-    for endpoint, label in course_types:
-        url = build_url(endpoint)
-        courses = fetch_courses(auth, url, base_data, label)
+    for endpoint, label, need_batch, needs_loop in course_types:
+        # 专业内跨年级选课和跨专业选课需要先进入页面
+        if need_batch:
+            page_url = f"https://jwxt.sztu.edu.cn/jsxsd/xsxk/{endpoint}?jx0502zbid={batch_id}"
+            auth.get(page_url)
+            time.sleep(0.3)
 
-        if courses:
-            all_courses.extend(courses)
-            print(f"   📊 累计: {len(all_courses)} 门")
+        data = base_data.copy()
+        if need_batch:
+            data["jx0502zbid"] = batch_id
+
+        debug = label in ["专业内跨年级选课", "跨专业选课"]
+        
+        if needs_loop:
+            print(f"\n📥 {label} (需通过遍历字符全量获取)")
+            queries = [str(i) for i in range(10)] + [chr(i) for i in range(ord('a'), ord('z')+1)]
+            seen_ids = set()
+            type_courses = []
+            
+            # Disable fetch_courses inner printing for each letter
+            for q in queries:
+                url = build_url(endpoint, batch_id, kcxx=q)
+                courses = fetch_courses(auth, url, data, label, debug=False) # Keep debug False to avoid spam
+                if courses:
+                    for c in courses:
+                        jx_id = c.get("jx0404id", "")
+                        if jx_id and jx_id not in seen_ids:
+                            seen_ids.add(jx_id)
+                            type_courses.append(c)
+                time.sleep(0.1) # small delay between letter queries
+            
+            # Ensure stats reflect the de-duplicated total for this type
+            total_stats[label] = len(type_courses)
+            print(f"   ✅ {label} 遍历完成，去重后共 {len(type_courses)} 门课程")
+            if type_courses:
+                all_courses.extend(type_courses)
+                print(f"   📊 累计: {len(all_courses)} 门")
+        else:
+            url = build_url(endpoint, batch_id)
+            courses = fetch_courses(auth, url, data, label, debug=debug)
+            if courses:
+                all_courses.extend(courses)
+                print(f"   📊 累计: {len(all_courses)} 门")
 
         time.sleep(0.5)
 

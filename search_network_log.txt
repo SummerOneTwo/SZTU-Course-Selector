@@ -1,0 +1,27 @@
+Logging in...
+Login successful.
+Navigating to index: https://jwxt.sztu.edu.cn/jsxsd/xsxk/xsxk_index?jx0502zbid=A6E218EF245D49D1823175632E6109F5
+
+=== 专业内跨年级选课 ===
+Clicking Query button for 跨年级...
+
+[POST] URL: https://jwxt.sztu.edu.cn/jsxsd/xsxkkc/xsxkKnjxk?kcxx=&skls=&skxq=&skjc=&endJc=&sfym=false&sfct=true&sfxx=true&skfs=
+Payload: sEcho=1&iColumns=13&sColumns=&iDisplayStart=0&iDisplayLength=15&mDataProp_0=kch&mDataProp_1=kczh&mDataProp_2=kcmc&mDataProp_3=zyfxmc&mDataProp_4=fzmc&mDataProp_5=xf&mDataProp_6=skls&mDataProp_7=sksj&mDataProp_8=skdd&mDataProp_9=xqmc&mDataProp_10=syrs&mDataProp_11=ctsm&mDataProp_12=czOper
+Response: {"aaData":[],"sEcho":"1","iTotalRecords":0,"iTotalDisplayRecords":0,"bbData":[],"flag":true,"flag1":true,"jfViewStr":""}
+...
+Failed during 跨年级: Locator.click: Timeout 5000ms exceeded.
+Call log:
+  - waiting for locator("button:has-text('查询'), input[value='查询'], a:has-text('查询')").first
+
+
+=== 跨专业选课 ===
+Clicking Query button for 跨专业...
+
+[POST] URL: https://jwxt.sztu.edu.cn/jsxsd/xsxkkc/xsxkFawxk?kcxx=&skls=&skxq=&skjc=&endJc=&sfym=false&sfct=true&sfxx=true&skfs=
+Payload: sEcho=1&iColumns=12&sColumns=&iDisplayStart=0&iDisplayLength=15&mDataProp_0=kch&mDataProp_1=kczh&mDataProp_2=kcmc&mDataProp_3=fzmc&mDataProp_4=xf&mDataProp_5=skls&mDataProp_6=sksj&mDataProp_7=skdd&mDataProp_8=xqmc&mDataProp_9=syrs&mDataProp_10=ctsm&mDataProp_11=czOper
+Response: {"aaData":[],"sEcho":"1","iTotalRecords":0,"iTotalDisplayRecords":0,"bbData":[],"flag":true,"flag1":true,"jfViewStr":""}
+...
+Failed during 跨专业: Locator.click: Timeout 5000ms exceeded.
+Call log:
+  - waiting for locator("button:has-text('查询'), input[value='查询'], a:has-text('查询')").first
+
