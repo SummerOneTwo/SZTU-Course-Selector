@@ -26,6 +26,16 @@ class SessionExpiredError(Exception):
 
 session_expired = False
 
+# 选课类型：cno -> 中文说明。新增类型时改这里，并同步 logintoXK / get_course 的分支。
+COURSE_TYPES = {"0": "本学期计划选课", "1": "跨年级选课", "2": "公选课"}
+
+
+def check_cno(cno, where=""):
+    """校验 cno。填错若静默走错端点，只会表现为"选课失败"，极难排查。"""
+    if cno not in COURSE_TYPES:
+        opts = " ".join(f'"{k}"={v}' for k, v in COURSE_TYPES.items())
+        raise ValueError(f"{where}选课类型 cno={cno!r} 无效，可选值：{opts}")
+
 # --- 1. 配置加载与校验 ---
 try:
     with open('config.toml', 'rb') as f:
@@ -38,6 +48,7 @@ try:
     for c in config.get('courses', []):
         kcid = c['kcid'].strip()
         cno = str(c.get('cno', '0')).strip()
+        check_cno(cno, f"课程「{c.get('name', '未命名课程')}」的 ")
         jx_items = c.get('jx0404id', [])
         if isinstance(jx_items, str):
             jx_items = [x.strip() for x in jx_items.split(',') if x.strip()]
@@ -194,17 +205,28 @@ class Auth:
         if cno == "0":
             url_list = "https://jwxt.sztu.edu.cn/jsxsd/xsxkkc/xsxkBxqjhxk?kcxx=&skls=&skxq=&skjc=&sfym=false&sfct=true&sfxx=true&skfs="
             data_list = "sEcho=1&iColumns=13&sColumns=&iDisplayStart=0&iDisplayLength=15&mDataProp_0=kch&mDataProp_1=kczh&mDataProp_2=kcmc&mDataProp_3=xf&mDataProp_4=skls&mDataProp_5=sksj&mDataProp_6=skdd&mDataProp_7=xqmc&mDataProp_8=syzxwrs&mDataProp_9=syfzxwrs&mDataProp_10=ctsm&mDataProp_11=szkcflmc&mDataProp_12=czOper"
-        else:
+        elif cno == "1":
             url_list = "https://jwxt.sztu.edu.cn/jsxsd/xsxkkc/xsxkKnjxk?kcxx=&skls=&skxq=&skjc=&endJc=&sfym=false&sfct=true&sfxx=true&skfs="
             data_list = "sEcho=1&iColumns=15&sColumns=&iDisplayStart=0&iDisplayLength=15&mDataProp_0=kch&mDataProp_1=kczh&mDataProp_2=kcmc&mDataProp_3=zyfxmc&mDataProp_4=fzmc&mDataProp_5=xf&mDataProp_6=skls&mDataProp_7=sksj&mDataProp_8=skdd&mDataProp_9=xqmc&mDataProp_10=xkrs&mDataProp_11=syzxwrs&mDataProp_12=syfzxwrs&mDataProp_13=ctsm&mDataProp_14=czOper"
+        elif cno == "2":
+            # 公选课列表接口比其他类型多一个 szjylb 参数
+            url_list = "https://jwxt.sztu.edu.cn/jsxsd/xsxkkc/xsxkGgxxkxk?kcxx=&skls=&skxq=&skjc=&sfym=false&sfct=true&szjylb=&sfxx=true&skfs="
+            data_list = "sEcho=1&iColumns=14&sColumns=&iDisplayStart=0&iDisplayLength=15&mDataProp_0=kch&mDataProp_1=kczh&mDataProp_2=kcmc&mDataProp_3=zyfxmc&mDataProp_4=fzmc&mDataProp_5=xf&mDataProp_6=skls&mDataProp_7=sksj&mDataProp_8=skdd&mDataProp_9=xqmc&mDataProp_10=syzxwrs&mDataProp_11=syfzxwrs&mDataProp_12=ctsm&mDataProp_13=czOper"
+        else:
+            check_cno(cno)
         self.post(url_list, data=data_list)
         print("✅ 已进入选课界面。")
 
     def get_course(self, kcid, jxid, cno):
         if cno == "0":
-            url = f"https://jwxt.sztu.edu.cn/jsxsd/xsxkkc/bxqjhxkOper?kcid={kcid}&cfbs=null&jx0404id={jxid}&xkzy=&trjf="
+            oper = "bxqjhxkOper"   # 本学期计划选课
+        elif cno == "1":
+            oper = "knjxkOper"      # 跨年级选课
+        elif cno == "2":
+            oper = "ggxxkxkOper"    # 公选课
         else:
-            url = f"https://jwxt.sztu.edu.cn/jsxsd/xsxkkc/knjxkOper?kcid={kcid}&cfbs=null&jx0404id={jxid}&xkzy=&trjf="
+            check_cno(cno)
+        url = f"https://jwxt.sztu.edu.cn/jsxsd/xsxkkc/{oper}?kcid={kcid}&cfbs=null&jx0404id={jxid}&xkzy=&trjf="
         return self.get(url)
 
 def select_course_worker(auth_session, kc, jx, cno, name="未命名课程"):
